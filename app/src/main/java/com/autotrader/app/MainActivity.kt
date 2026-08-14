@@ -31,6 +31,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvAuto: TextView
     private lateinit var btnAuto: Button
 
+    private var autoRunning = false
+
     private val notifPerm =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -50,6 +52,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRefresh).setOnClickListener { refresh() }
         findViewById<Button>(R.id.btnReset).setOnClickListener { resetAccount() }
         btnAuto.setOnClickListener { toggleAuto() }
+
+        WorkManager.getInstance(this)
+            .getWorkInfosForUniqueWorkLiveData("trade_bot")
+            .observe(this) { infos ->
+                autoRunning = infos.any { !it.state.isFinished }
+                tvAuto.text = if (autoRunning) "Auto-trading: ON (hourly)" else "Auto-trading: OFF"
+                btnAuto.text = if (autoRunning) "Turn auto OFF" else "Turn auto ON"
+            }
 
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -106,8 +116,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun toggleAuto() {
         val wm = WorkManager.getInstance(this)
-        val isRunning = wm.getWorkInfosForUniqueWork("trade_bot").get().any { !it.state.isFinished }
-        if (isRunning) {
+        if (autoRunning) {
             wm.cancelUniqueWork("trade_bot")
             Toast.makeText(this, "Auto-trading OFF", Toast.LENGTH_SHORT).show()
         } else {
@@ -120,7 +129,6 @@ class MainActivity : AppCompatActivity() {
             wm.enqueueUniquePeriodicWork("trade_bot", ExistingPeriodicWorkPolicy.UPDATE, request)
             Toast.makeText(this, "Auto-trading ON (hourly, during market hours)", Toast.LENGTH_SHORT).show()
         }
-        refresh()
     }
 
     private fun resetAccount() {
@@ -136,45 +144,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val cash = StateStore.cash(this)
-        val deposits = StateStore.depositsTotal(this)
-        val positions = StateStore.positions(this)
+        Thread {
+            val cash = StateStore.cash(this)
+            val deposits = StateStore.depositsTotal(this)
+            val positions = StateStore.positions(this)
 
-        tvEquity.text = TradeEngine.money(TradeEngine.equity(this))
-        tvDetails.text = "Cash: %s    Deposits: %s".format(
-            TradeEngine.money(cash), TradeEngine.money(deposits)
-        )
+            val equityText = TradeEngine.money(TradeEngine.equity(this))
+            val detailsText = "Cash: %s    Deposits: %s".format(
+                TradeEngine.money(cash), TradeEngine.money(deposits)
+            )
 
-        if (positions.isEmpty()) {
-            tvPositions.text = "No open positions."
-        } else {
-            val sb = StringBuilder("POSITIONS\n")
-            for ((sym, p) in positions.toSortedMap()) {
-                val price = TradeEngine.priceOrAvg(this, sym)
-                val pnl = (price / p.avgPrice - 1) * 100
-                sb.append("%s %s sh @ %s (P&L %s)\n".format(
-                    sym,
-                    String.format(java.util.Locale.US, "%.4f", p.shares),
-                    TradeEngine.money(p.avgPrice),
-                    String.format(java.util.Locale.US, "%+.1f%%", pnl)
-                ))
-            }
-            tvPositions.text = sb.toString().trimEnd()
-        }
-
-        val recent = StateStore.history(this).takeLast(10)
-        tvLog.text = if (recent.isEmpty()) "No trades yet." else
-            recent.joinToString("\n") {
-                "%s %s %ss sh @ %s  %s".format(
-                    it.action, it.symbol, it.shares, TradeEngine.money(it.price), it.date
-                )
+            val positionsText = if (positions.isEmpty()) {
+                "No open positions."
+            } else {
+                val sb = StringBuilder("POSITIONS\n")
+                for ((sym, p) in positions.toSortedMap()) {
+                    val price = TradeEngine.priceOrAvg(this, sym)
+                    val pnl = (price / p.avgPrice - 1) * 100
+                    sb.append("%s %s sh @ %s (P&L %s)\n".format(
+                        sym,
+                        String.format(java.util.Locale.US, "%.4f", p.shares),
+                        TradeEngine.money(p.avgPrice),
+                        String.format(java.util.Locale.US, "%+.1f%%", pnl)
+                    ))
+                }
+                sb.toString().trimEnd()
             }
 
-        val wm = WorkManager.getInstance(this)
-        wm.getWorkInfosForUniqueWorkLiveData("trade_bot").observe(this) { infos ->
-            val running = infos.any { !it.state.isFinished }
-            tvAuto.text = if (running) "Auto-trading: ON (hourly)" else "Auto-trading: OFF"
-            btnAuto.text = if (running) "Turn auto OFF" else "Turn auto ON"
-        }
+            val recent = StateStore.history(this).takeLast(10)
+            val logText = if (recent.isEmpty()) "No trades yet." else
+                recent.joinToString("\n") {
+                    "%s %s %ss sh @ %s  %s".format(
+                        it.action, it.symbol, it.shares, TradeEngine.money(it.price), it.date
+                    )
+                }
+
+            runOnUiThread {
+                tvEquity.text = equityText
+                tvDetails.text = detailsText
+                tvPositions.text = positionsText
+                tvLog.text = logText
+            }
+        }.start()
     }
 }
