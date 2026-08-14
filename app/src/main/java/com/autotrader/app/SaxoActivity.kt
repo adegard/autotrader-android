@@ -63,8 +63,8 @@ class SaxoActivity : AppCompatActivity() {
         val code = uri?.getQueryParameter("code") ?: return
         saveFields()
         runAsync(
-            { saxo.exchangeCode(code) },
-            { "Authenticated OK. Token saved." }
+            { saxo.exchangeCode(code); "Authenticated OK. Token saved." },
+            { log(it) }
         )
     }
 
