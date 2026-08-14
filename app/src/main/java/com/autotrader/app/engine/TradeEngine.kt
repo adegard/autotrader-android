@@ -9,7 +9,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.util.Date
 import java.util.Locale
-
 data class BotResult(
     val summary: String,
     val trades: List<String>,
@@ -18,6 +17,8 @@ data class BotResult(
 )
 
 object TradeEngine {
+
+    fun money(v: Double): String = String.format(Locale.US, "$%.2f", v)
 
     fun marketIsOpen(): Boolean {
         val now = ZonedDateTime.now(ZoneId.of("America/New_York"))
@@ -46,7 +47,7 @@ object TradeEngine {
                 StateStore.addTrade(
                     context, Trade("SELL", sym, pos.shares, a.price, now())
                 )
-                tradesLog.add("SOLD $sym ${pos.shares}sh @ $%.2f (${reasons.joinToString("; ")})".format(a.price))
+                tradesLog.add("SOLD $sym ${pos.shares}sh @ ${money(a.price)} (${reasons.joinToString("; ")})")
             }
         }
 
@@ -74,7 +75,7 @@ object TradeEngine {
                 StateStore.addTrade(
                     context, Trade("BUY", cand.symbol, shares, cand.price, now())
                 )
-                tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ $%.2f".format(cand.price))
+                tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ ${money(cand.price)}")
             }
         }
 
@@ -91,7 +92,7 @@ object TradeEngine {
         }
 
         return BotResult(
-            summary = "Equity: $%.2f".format(equity),
+            summary = "Equity: ${money(equity)}",
             trades = tradesLog,
             equity = equity,
             lastRun = now(),

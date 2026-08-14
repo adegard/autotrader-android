@@ -70,10 +70,10 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Deposit virtual money")
             .setView(input)
             .setPositiveButton("Deposit") { _, _ ->
-                val amt = input.text.toString().toDoubleOrNull() ?: 0.0
+                val amt = input.text.toString().replace(',', '.').toDoubleOrNull() ?: 0.0
                 if (amt > 0) {
                     StateStore.deposit(this, amt)
-                    Toast.makeText(this, "Deposited $${amt}. Play money only.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Deposited ${TradeEngine.money(amt)}. Play money only.", Toast.LENGTH_SHORT).show()
                     refresh()
                 }
             }
@@ -140,16 +140,24 @@ class MainActivity : AppCompatActivity() {
         val deposits = StateStore.depositsTotal(this)
         val positions = StateStore.positions(this)
 
-        tvEquity.text = "$%.2f".format(TradeEngine.equity(this))
-        tvDetails.text = "Cash: $%.2f    Deposits: $%.2f".format(cash, deposits)
+        tvEquity.text = TradeEngine.money(TradeEngine.equity(this))
+        tvDetails.text = "Cash: %s    Deposits: %s".format(
+            TradeEngine.money(cash), TradeEngine.money(deposits)
+        )
 
         if (positions.isEmpty()) {
             tvPositions.text = "No open positions."
         } else {
             val sb = StringBuilder("POSITIONS\n")
             for ((sym, p) in positions.toSortedMap()) {
-                val pnl = (TradeEngine.priceOrAvg(this, sym) / p.avgPrice - 1) * 100
-                sb.append("%s %.4f sh @ %.2f (P&L %+.1f%%)\n".format(sym, p.shares, p.avgPrice, pnl))
+                val price = TradeEngine.priceOrAvg(this, sym)
+                val pnl = (price / p.avgPrice - 1) * 100
+                sb.append("%s %s sh @ %s (P&L %s)\n".format(
+                    sym,
+                    String.format(java.util.Locale.US, "%.4f", p.shares),
+                    TradeEngine.money(p.avgPrice),
+                    String.format(java.util.Locale.US, "%+.1f%%", pnl)
+                ))
             }
             tvPositions.text = sb.toString().trimEnd()
         }
@@ -157,7 +165,9 @@ class MainActivity : AppCompatActivity() {
         val recent = StateStore.history(this).takeLast(10)
         tvLog.text = if (recent.isEmpty()) "No trades yet." else
             recent.joinToString("\n") {
-                "${it.action} ${it.symbol} ${it.shares}sh @ $%.2f  ${it.date}".format(it.price)
+                "%s %s %ss sh @ %s  %s".format(
+                    it.action, it.symbol, it.shares, TradeEngine.money(it.price), it.date
+                )
             }
 
         val wm = WorkManager.getInstance(this)

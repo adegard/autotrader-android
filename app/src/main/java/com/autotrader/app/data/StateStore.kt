@@ -22,10 +22,11 @@ object StateStore {
 
     private fun prefs(c: Context) = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    fun cash(c: Context): Double = prefs(c).getString(KEY_CASH, "0")!!.toDouble()
+    fun cash(c: Context): Double =
+        prefs(c).getString(KEY_CASH, "0")?.replace(',', '.')?.toDoubleOrNull() ?: 0.0
 
     fun setCash(c: Context, v: Double) =
-        prefs(c).edit().putString(KEY_CASH, "%.2f".format(v)).apply()
+        prefs(c).edit().putString(KEY_CASH, v.toString()).apply()
 
     fun deposit(c: Context, amount: Double): Boolean {
         if (amount <= 0) return false

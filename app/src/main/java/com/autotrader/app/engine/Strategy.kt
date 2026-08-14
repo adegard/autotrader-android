@@ -1,5 +1,7 @@
 package com.autotrader.app.engine
 
+import java.util.Locale
+
 data class Analysis(
     val symbol: String,
     val price: Double,
@@ -47,9 +49,9 @@ object Strategy {
         val s20 = a.sma20 ?: return reasons
         val r = a.rsi ?: return reasons
         val pnl = (a.price / avgPrice - 1) * 100
-        if (r > RSI_OVERBOUGHT_SELL) reasons.add("RSI %.0f overbought".format(r))
+        if (r > RSI_OVERBOUGHT_SELL) reasons.add(String.format(Locale.US, "RSI %.0f overbought", r))
         if (a.price < s20) reasons.add("broke SMA20")
-        if (pnl <= STOP_LOSS_PCT) reasons.add("stop-loss %.1f%%".format(pnl))
+        if (pnl <= STOP_LOSS_PCT) reasons.add(String.format(Locale.US, "stop-loss %.1f%%", pnl))
         return reasons
     }
 }
