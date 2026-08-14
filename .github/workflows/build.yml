@@ -46,9 +46,10 @@ jobs:
           git config user.email "actions@github.com"
           git fetch origin status || true
           git checkout status || git checkout --orphan status
+          cp app/build/outputs/apk/debug/app-debug.apk ./app-debug.apk || true
           echo "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"status\": \"success\", \"sha\": \"${GITHUB_SHA}\"}" > build-status.json
-          git add build-status.json
-          git commit -m "build: success" || true
+          git add -f build-status.json app-debug.apk
+          git commit -m "build: success ${GITHUB_SHA:0:7}" || true
           git push origin status
 
       - name: Report failure to status branch
