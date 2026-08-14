@@ -9,10 +9,12 @@ An automatic trading bot for Android built in Kotlin. It:
 
 ## How it works
 
-- Data: Yahoo Finance chart API (free, no key) — `app/src/main/java/com/autotrader/app/engine/DataFetcher.kt`
+- Data: Yahoo Finance chart API (free, no key) + Yahoo news RSS for sentiment — `app/src/main/java/com/autotrader/app/engine/DataFetcher.kt`, `News.kt`
 - Indicators: SMA, RSI, momentum — `Indicators.kt`
-- Strategy: price above SMA20 AND SMA50, RSI < 78, 20-day momentum > 0 to buy.
-  Sell when RSI > 78, price breaks SMA20, or -8% stop-loss. — `Strategy.kt`
+- Selection: **Alpha score** = trend (SMA20/SMA50) + 20d momentum + RSI zone + news sentiment with an *anticipation* bonus (positive news + price not yet stretched) and a *crowding* penalty (very hot news + big run-up). Buy when price > SMA20 AND SMA50, RSI < 78, momentum > 0. — `Strategy.kt`
+- Sell when RSI > 78, price breaks SMA20, -8% stop-loss, or negative news. — `Strategy.kt`
+- **Transaction costs**: 0.15% commission (min $1) + 5bps slippage per side, deducted on every simulated trade.
+- Universe: 20 US megacaps + 11 European/Italian names (ENI, Enel, UniCredit, Intesa, Stellantis, Generali, Ferrari, Leonardo, SAP, ASML, LVMH).
 - State: SharedPreferences (cash, positions, history) — `data/StateStore.kt`
 - Background: `worker/TradeWorker.kt` scheduled by WorkManager every hour.
 

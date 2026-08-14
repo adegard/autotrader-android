@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnDeposit).setOnClickListener { showDepositDialog() }
         findViewById<Button>(R.id.btnRun).setOnClickListener { runBotNow() }
         findViewById<Button>(R.id.btnRefresh).setOnClickListener { refresh() }
+        findViewById<Button>(R.id.btnSuggest).setOnClickListener { showSuggestions() }
         findViewById<Button>(R.id.btnReset).setOnClickListener { resetAccount() }
         btnAuto.setOnClickListener { toggleAuto() }
 
@@ -129,6 +130,26 @@ class MainActivity : AppCompatActivity() {
             wm.enqueueUniquePeriodicWork("trade_bot", ExistingPeriodicWorkPolicy.UPDATE, request)
             Toast.makeText(this, "Auto-trading ON (hourly, during market hours)", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showSuggestions() {
+        findViewById<Button>(R.id.btnSuggest).isEnabled = false
+        Thread {
+            val lines = try {
+                TradeEngine.suggestions()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            runOnUiThread {
+                findViewById<Button>(R.id.btnSuggest).isEnabled = true
+                val text = if (lines.isEmpty()) "Failed - check network." else lines.joinToString("\n")
+                AlertDialog.Builder(this)
+                    .setTitle("Suggested operations (after costs)")
+                    .setMessage(text)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }.start()
     }
 
     private fun resetAccount() {

@@ -12,6 +12,7 @@ data class Trade(
     val shares: Double,
     val price: Double,
     val date: String,
+    val cost: Double = 0.0,
 )
 
 object StateStore {
@@ -64,6 +65,7 @@ object StateStore {
             Trade(
                 t.getString("a"), t.getString("s"),
                 t.getDouble("sh"), t.getDouble("p"), t.getString("d"),
+                t.optDouble("c", 0.0),
             )
         }
     }
@@ -74,6 +76,7 @@ object StateStore {
             JSONObject()
                 .put("a", t.action).put("s", t.symbol)
                 .put("sh", t.shares).put("p", t.price).put("d", t.date)
+                .put("c", t.cost)
         )
         prefs(c).edit().putString(KEY_HISTORY, arr.toString()).apply()
     }

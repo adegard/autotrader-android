@@ -42,10 +42,11 @@ object TradeEngine {
             val reasons = Strategy.sellReasons(a, pos.avgPrice)
             if (reasons.isNotEmpty()) {
                 val proceeds = a.price * pos.shares
-                cash += proceeds
+                val costs = Strategy.tradeCosts(proceeds)
+                cash += proceeds - costs
                 positions.remove(sym)
                 StateStore.addTrade(
-                    context, Trade("SELL", sym, pos.shares, a.price, now())
+                    context, Trade("SELL", sym, pos.shares, a.price, now(), costs)
                 )
                 tradesLog.add("SOLD $sym ${pos.shares}sh @ ${money(a.price)} (${reasons.joinToString("; ")})")
             }
@@ -64,19 +65,21 @@ object TradeEngine {
                 candidates.add(Strategy.buyCandidate(s) ?: continue)
             }
             if (candidates.isNotEmpty()) {
-                candidates.sortByDescending { it.momentum20 ?: -999.0 }
+                candidates.sortByDescending { it.alpha() }
                 val perSlot = cash * Strategy.POSITION_SIZE_FRAC / freeSlots.coerceAtMost(candidates.size)
                 for (cand in candidates.take(freeSlots)) {
                     val budget = minOf(perSlot, cash * Strategy.POSITION_SIZE_FRAC)
                     if (budget <= 0) break
-                    val shares = (budget / cand.price).let { Math.round(it * 10000.0) / 10000.0 }
+                    val costs = Strategy.tradeCosts(budget)
+                    if (costs > cash) break
+                    val shares = ((budget - costs) / cand.price).let { Math.round(it * 10000.0) / 10000.0 }
                     if (shares < 0.01) continue
-                    cash -= cand.price * shares
+                    cash -= cand.price * shares + costs
                     positions[cand.symbol] = Position(shares, cand.price)
                     StateStore.addTrade(
-                        context, Trade("BUY", cand.symbol, shares, cand.price, now())
+                        context, Trade("BUY", cand.symbol, shares, cand.price, now(), costs)
                     )
-                    tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ ${money(cand.price)}")
+                    tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ ${money(cand.price)} (cost ${money(costs)})")
                 }
             }
         }
@@ -120,6 +123,40 @@ object TradeEngine {
         } catch (e: Exception) {
             pos.avgPrice
         }
+    }
+
+    fun suggestions(): List<String> {
+        val out = mutableListOf<String>()
+        for (sym in Strategy.WATCHLIST) {
+            val s = try {
+                DataFetcher.fetchSeries(sym)
+            } catch (e: Exception) {
+                continue
+            }
+            val a = Strategy.analyze(s)
+            val cand = Strategy.buyCandidate(s)
+            val action = when {
+                a.alpha() >= 2.5 && cand != null -> "BUY"
+                cand != null -> "BUY (weaker)"
+                a.newsScore < -0.4 || (a.rsi ?: 0.0) > 82 -> "AVOID"
+                a.sma20 != null && a.price < a.sma20 -> "AVOID"
+                else -> "WATCH"
+            }
+            val reasons = mutableListOf<String>()
+            if (a.sma20 != null && a.price > a.sma20) reasons.add(">SMA20")
+            if (a.sma50 != null && a.price > a.sma50) reasons.add(">SMA50")
+            a.rsi?.let { r -> if (r > 50 && r < 70) reasons.add("RSI ${r.toInt()}") }
+            a.momentum20?.let { reasons.add(String.format(Locale.US, "mom %+.1f%%", it)) }
+            if (a.newsScore > 0.2) reasons.add(String.format(Locale.US, "news %+.2f", a.newsScore))
+            if (a.newsScore < -0.2) reasons.add(String.format(Locale.US, "news %+.2f", a.newsScore))
+            out.add("%s %-9s alpha %+.1f %s".format(
+                action.padEnd(12), sym, a.alpha(), reasons.joinToString(", ")
+            ))
+        }
+        out.sortWith(compareByDescending<String> { line ->
+            Regex("alpha ([+-]?[0-9.]+)").find(line)?.groupValues?.get(1)?.toDoubleOrNull() ?: -99.0
+        })
+        return out
     }
 
     private fun now(): String =
