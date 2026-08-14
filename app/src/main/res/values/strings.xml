@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">AutoTrader</string>
+    <string-array name="saxo_env">
+        <item>SIM (demo, safe)</item>
+        <item>LIVE (real money)</item>
+    </string-array>
 </resources>

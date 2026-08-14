@@ -52,6 +52,9 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRefresh).setOnClickListener { refresh() }
         findViewById<Button>(R.id.btnSuggest).setOnClickListener { showSuggestions() }
         findViewById<Button>(R.id.btnReset).setOnClickListener { resetAccount() }
+        findViewById<Button>(R.id.btnSaxo).setOnClickListener {
+            startActivity(android.content.Intent(this, SaxoActivity::class.java))
+        }
         btnAuto.setOnClickListener { toggleAuto() }
 
         WorkManager.getInstance(this)
