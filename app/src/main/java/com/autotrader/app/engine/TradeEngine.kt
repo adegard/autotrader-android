@@ -63,19 +63,21 @@ object TradeEngine {
                 }
                 candidates.add(Strategy.buyCandidate(s) ?: continue)
             }
-            candidates.sortByDescending { it.momentum20 ?: -999.0 }
-            val perSlot = cash * Strategy.POSITION_SIZE_FRAC / freeSlots.coerceAtMost(candidates.size)
-            for (cand in candidates.take(freeSlots)) {
-                val budget = minOf(perSlot, cash * Strategy.POSITION_SIZE_FRAC)
-                if (budget <= 0) break
-                val shares = (budget / cand.price).let { Math.round(it * 10000.0) / 10000.0 }
-                if (shares < 0.01) continue
-                cash -= cand.price * shares
-                positions[cand.symbol] = Position(shares, cand.price)
-                StateStore.addTrade(
-                    context, Trade("BUY", cand.symbol, shares, cand.price, now())
-                )
-                tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ ${money(cand.price)}")
+            if (candidates.isNotEmpty()) {
+                candidates.sortByDescending { it.momentum20 ?: -999.0 }
+                val perSlot = cash * Strategy.POSITION_SIZE_FRAC / freeSlots.coerceAtMost(candidates.size)
+                for (cand in candidates.take(freeSlots)) {
+                    val budget = minOf(perSlot, cash * Strategy.POSITION_SIZE_FRAC)
+                    if (budget <= 0) break
+                    val shares = (budget / cand.price).let { Math.round(it * 10000.0) / 10000.0 }
+                    if (shares < 0.01) continue
+                    cash -= cand.price * shares
+                    positions[cand.symbol] = Position(shares, cand.price)
+                    StateStore.addTrade(
+                        context, Trade("BUY", cand.symbol, shares, cand.price, now())
+                    )
+                    tradesLog.add("BOUGHT ${cand.symbol} ${shares}sh @ ${money(cand.price)}")
+                }
             }
         }
 
