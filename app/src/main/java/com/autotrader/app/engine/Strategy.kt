@@ -41,7 +41,7 @@ object Strategy {
         val r = a.rsi ?: return null
         val m = a.momentum20 ?: return null
         if (a.price > s20 && a.price > s50 && r < RSI_OVERBOUGHT_SELL && m > 0) return a
-        return a
+        return null
     }
 
     fun sellReasons(a: Analysis, avgPrice: Double): List<String> {

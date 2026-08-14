@@ -37,7 +37,7 @@ object DataFetcher {
             val result = root.getJSONObject("chart").getJSONArray("result")
             if (result.length() == 0) throw RuntimeException("no data for $symbol")
             val d = result.getJSONObject(0)
-            val ts = d.optJSONArray("timestamp")
+            val ts = d.optJSONArray("timestamp") ?: throw RuntimeException("no timestamps for $symbol")
             val quote = d.getJSONObject("indicators").getJSONArray("quote").getJSONObject(0)
             val closes = quote.getJSONArray("close")
             val highs = quote.getJSONArray("high")
