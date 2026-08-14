@@ -61,10 +61,7 @@ jobs:
           git fetch origin status || true
           git checkout status || git checkout --orphan status
           echo "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"status\": \"failure\", \"sha\": \"${GITHUB_SHA}\"}" > build-status.json
-          git add -f build-status.json
+          cp build.log build-error.log || true
+          git add -f build-status.json build-error.log
           git commit -m "build: failure ${GITHUB_SHA:0:7}" || true
           git push origin status
-          if [ -f build.log ]; then
-            echo "===== BUILD LOG (last 60 lines) ====="
-            tail -n 60 build.log
-          fi
