@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,3 +38,28 @@ jobs:
         with:
           name: autotrader-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Report success to status branch
+        run: |
+          set -e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git fetch origin status || true
+          git checkout status || git checkout --orphan status
+          echo "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"status\": \"success\", \"sha\": \"${GITHUB_SHA}\"}" > build-status.json
+          git add build-status.json
+          git commit -m "build: success" || true
+          git push origin status
+
+      - name: Report failure to status branch
+        if: failure()
+        run: |
+          set -e
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git fetch origin status || true
+          git checkout status || git checkout --orphan status
+          echo "{\"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"status\": \"failure\", \"sha\": \"${GITHUB_SHA}\"}" > build-status.json
+          git add build-status.json
+          git commit -m "build: failure" || true
+          git push origin status
