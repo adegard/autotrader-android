@@ -1,11 +1,23 @@
-# AutoTrader — Kotlin Android trading bot (virtual money)
+# AutoTrader — Kotlin Android trading bot (virtual money + optional Saxo real trading)
 
-An automatic trading bot for Android built in Kotlin. It:
+An automatic trading bot for Android built in Kotlin.
 
-- **Auto-selects stocks** from a 20-stock watchlist using momentum + SMA20/SMA50 trend filter + RSI
+## Two versions
+
+### Version 1 — without Saxo (pure virtual trading)
+- **Auto-selects stocks** from a 31-stock watchlist (US + EU/Italian) using momentum + SMA20/SMA50 trend filter + RSI + news sentiment
 - **Makes buy/sell decisions** every hour during US market hours (Mon–Fri, 09:30–16:00 New York)
 - **Uses 100% virtual money** — deposit any amount, no bank or card required
 - **Runs in the background** via WorkManager (hourly periodic work)
+
+### Version 2 — with Saxo (optional real-trading integration)
+Everything in Version 1, **plus** a direct link to **Saxo Bank OpenAPI**:
+- Connect your own Saxo account with **App Key + App Secret** (register an OpenAPI app in the Saxo developer portal)
+- **SIM (demo) by default** — free Saxo simulation account, no real money
+- **LIVE** mode places real orders on your Saxo account (requires explicit environment switch + per-order confirmation)
+- View balance/positions and place buy/sell orders **directly from the phone** — no PC or bridge server needed
+
+> Choose whichever build you need. The Saxo integration is optional and is **not** part of the pure virtual experience.
 
 ## How it works
 
@@ -17,6 +29,7 @@ An automatic trading bot for Android built in Kotlin. It:
 - Universe: 20 US megacaps + 11 European/Italian names (ENI, Enel, UniCredit, Intesa, Stellantis, Generali, Ferrari, Leonardo, SAP, ASML, LVMH).
 - State: SharedPreferences (cash, positions, history) — `data/StateStore.kt`
 - Background: `worker/TradeWorker.kt` scheduled by WorkManager every hour.
+- Saxo real trading: `engine/SaxoClient.kt` + `SaxoActivity` (OAuth2 login, balance/positions, orders).
 
 ## Build
 
@@ -35,6 +48,7 @@ Or build locally:
 2. Open the APK and install.
 3. Grant notification permission (for trade alerts).
 4. Deposit virtual money and press "Run bot now", or turn auto-trading ON.
+5. (Version 2 only) Open "SAXO: Real Trading" → enter App Key/Secret → login → keep SIM.
 
 ## Strategy validation
 
@@ -46,4 +60,9 @@ survivorship bias in the watchlist — treat results as relative guidance only.
 
 ## Disclaimer
 
-This is a simulation for learning. No real money, no real trades. Not investment advice.
+**This project is for educational purposes only.** It is **not tested against
+real market shares or live market conditions**, and the strategy, indicators,
+and any signals it produces are provided **without any guarantee of accuracy or
+profitability**. Real trading involves significant risk of loss. Nothing here is
+investment advice. The Saxo integration defaults to the SIM (demo) environment;
+switching to LIVE places orders on your own account at your own risk.
